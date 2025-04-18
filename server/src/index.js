@@ -8,7 +8,14 @@ const models = require("./models");
 
 const app = express();
 
-// Middleware
+// Debug middleware to log incoming requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  console.log("Headers:", req.headers);
+  next();
+});
+
+// Basic middleware setup
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
@@ -22,7 +29,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Something went wrong!" });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Database sync and server start
 const startServer = async () => {
@@ -30,8 +37,8 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log("Database connection established successfully.");
 
-    // Sync database (in development, you might want to use { force: true })
-    await sequelize.sync();
+    // Force sync database to create tables that match our models
+    await sequelize.sync({ force: true });
     console.log("Database synchronized successfully.");
 
     app.listen(PORT, () => {
