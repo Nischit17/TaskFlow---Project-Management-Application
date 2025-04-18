@@ -1,14 +1,22 @@
 {
-  "name": "server",
+  "name": "taskflow-server",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "project-management",
+    "task-management",
+    "express",
+    "postgresql",
+    "sequelize"
+  ],
+  "author": "NISCHIT D S",
   "license": "ISC",
-  "description": "",
+  "description": "Backend server for TaskFlow project management application",
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
