@@ -1,5 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
+const User = require("./User");
+const Project = require("./Project");
 
 const Task = sequelize.define("Task", {
   id: {
@@ -10,6 +12,9 @@ const Task = sequelize.define("Task", {
   title: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
   },
   description: {
     type: DataTypes.TEXT,
@@ -30,14 +35,26 @@ const Task = sequelize.define("Task", {
   projectId: {
     type: DataTypes.UUID,
     allowNull: false,
+    references: {
+      model: "Projects",
+      key: "id",
+    },
   },
   assignedTo: {
     type: DataTypes.UUID,
     allowNull: true,
+    references: {
+      model: "Users",
+      key: "id",
+    },
   },
   createdBy: {
     type: DataTypes.UUID,
     allowNull: false,
+    references: {
+      model: "Users",
+      key: "id",
+    },
   },
 });
 

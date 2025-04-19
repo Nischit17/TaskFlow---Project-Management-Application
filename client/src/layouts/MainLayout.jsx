@@ -17,6 +17,8 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Logout as LogoutIcon,
+  Assignment as ProjectIcon,
+  Task as TaskIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
@@ -46,6 +48,18 @@ const MainLayout = () => {
             <DashboardIcon />
           </ListItemIcon>
           <ListItemText primary="Dashboard" />
+        </ListItem>
+        <ListItem button onClick={() => navigate("/projects")}>
+          <ListItemIcon>
+            <ProjectIcon />
+          </ListItemIcon>
+          <ListItemText primary="Projects" />
+        </ListItem>
+        <ListItem button onClick={() => navigate("/tasks")}>
+          <ListItemIcon>
+            <TaskIcon />
+          </ListItemIcon>
+          <ListItemText primary="Tasks" />
         </ListItem>
         <ListItem button onClick={handleLogout}>
           <ListItemIcon>

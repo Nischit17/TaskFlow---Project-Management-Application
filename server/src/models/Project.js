@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
+const User = require("./User");
 
 const Project = sequelize.define("Project", {
   id: {
@@ -10,6 +11,9 @@ const Project = sequelize.define("Project", {
   title: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
   },
   description: {
     type: DataTypes.TEXT,
@@ -26,6 +30,10 @@ const Project = sequelize.define("Project", {
   createdBy: {
     type: DataTypes.UUID,
     allowNull: false,
+    references: {
+      model: "Users",
+      key: "id",
+    },
   },
 });
 

@@ -4,6 +4,8 @@ import MainLayout from "../layouts/MainLayout";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Dashboard from "../pages/Dashboard";
+import Projects from "../pages/Projects";
+import Tasks from "../pages/Tasks";
 import ProtectedRoute from "./ProtectedRoute";
 
 export const router = createBrowserRouter([
@@ -20,6 +22,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "projects",
+        element: (
+          <ProtectedRoute>
+            <Projects />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "tasks",
+        element: (
+          <ProtectedRoute>
+            <Tasks />
           </ProtectedRoute>
         ),
       },

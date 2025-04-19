@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "/api";
+const API_URL = "http://localhost:5001/api";
 
 // Create axios instance
 const api = axios.create({
@@ -48,6 +48,12 @@ export const tasksAPI = {
   create: (taskData) => api.post("/tasks", taskData),
   update: (id, taskData) => api.put(`/tasks/${id}`, taskData),
   delete: (id) => api.delete(`/tasks/${id}`),
+};
+
+// Users API
+export const usersAPI = {
+  getAll: () => api.get("/users"),
+  getById: (id) => api.get(`/users/${id}`),
 };
 
 export default api;

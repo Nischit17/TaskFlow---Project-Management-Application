@@ -8,6 +8,7 @@ import {
   registerFailure,
   logout,
 } from "../store/slices/authSlice";
+import { setToken, removeToken } from "../utils/authUtils";
 
 export const authService = {
   register: (userData) => async (dispatch) => {
@@ -15,7 +16,7 @@ export const authService = {
       dispatch(registerStart());
       const response = await authAPI.register(userData);
       dispatch(registerSuccess(response.data));
-      localStorage.setItem("token", response.data.token);
+      setToken(response.data.token);
       return response.data;
     } catch (error) {
       dispatch(
@@ -30,7 +31,7 @@ export const authService = {
       dispatch(loginStart());
       const response = await authAPI.login(credentials);
       dispatch(loginSuccess(response.data));
-      localStorage.setItem("token", response.data.token);
+      setToken(response.data.token);
       return response.data;
     } catch (error) {
       dispatch(loginFailure(error.response?.data?.message || "Login failed"));
@@ -41,12 +42,12 @@ export const authService = {
   logout: () => async (dispatch) => {
     try {
       await authAPI.logout();
-      localStorage.removeItem("token");
+      removeToken();
       dispatch(logout());
     } catch (error) {
       console.error("Logout error:", error);
       // Still clear local state even if server logout fails
-      localStorage.removeItem("token");
+      removeToken();
       dispatch(logout());
     }
   },

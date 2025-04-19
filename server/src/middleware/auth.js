@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const User = require("../models/User");
 
 const auth = async (req, res, next) => {
   try {
@@ -20,7 +20,14 @@ const auth = async (req, res, next) => {
     req.token = token;
     next();
   } catch (error) {
-    res.status(401).json({ message: "Invalid token" });
+    console.error("Auth middleware error:", error);
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token expired" });
+    }
+    res.status(500).json({ message: "Server error during authentication" });
   }
 };
 
