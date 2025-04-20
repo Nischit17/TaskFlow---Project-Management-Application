@@ -6,13 +6,21 @@ const { Op } = require("sequelize");
 // Create a new task
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, dueDate, priority, projectId, assignedTo } =
-      req.body;
+    const {
+      title,
+      description,
+      dueDate,
+      priority,
+      status,
+      projectId,
+      assignedTo,
+    } = req.body;
     const task = await Task.create({
       title,
       description,
       dueDate,
       priority,
+      status,
       projectId,
       assignedTo,
       createdBy: req.user.id,
@@ -142,7 +150,7 @@ exports.deleteTask = async (req, res) => {
     }
 
     await task.destroy();
-    res.status(204).send();
+    res.status(200).json({ message: "Task deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

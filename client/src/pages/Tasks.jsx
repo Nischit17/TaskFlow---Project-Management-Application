@@ -15,21 +15,41 @@ import {
   Select,
   MenuItem,
   Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Chip,
 } from "@mui/material";
-import { Add as AddIcon } from "@mui/icons-material";
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+} from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchTasks, createTask } from "../store/slices/taskSlice";
+import {
+  fetchTasks,
+  createTask,
+  deleteTask,
+  updateTask,
+} from "../store/slices/taskSlice";
 import { fetchProjects } from "../store/slices/projectSlice";
 import { fetchUsers } from "../store/slices/userSlice";
-import TaskCard from "../components/TaskCard";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 
 const Tasks = () => {
   const dispatch = useDispatch();
   const { tasks, loading, error } = useSelector((state) => state.tasks);
   const { projects } = useSelector((state) => state.projects);
   const { users } = useSelector((state) => state.users);
-  const { user: currentUser } = useSelector((state) => state.auth);
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [currentTask, setCurrentTask] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
@@ -37,7 +57,7 @@ const Tasks = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    dueDate: "",
+    dueDate: null,
     priority: "medium",
     status: "todo",
     projectId: "",
@@ -52,6 +72,20 @@ const Tasks = () => {
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+  const handleEditOpen = (task) => {
+    setCurrentTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description || "",
+      dueDate: task.dueDate ? new Date(task.dueDate) : null,
+      priority: task.priority,
+      status: task.status,
+      projectId: task.projectId,
+      assignedTo: task.assignedTo || "",
+    });
+    setEditOpen(true);
+  };
+  const handleEditClose = () => setEditOpen(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -61,12 +95,18 @@ const Tasks = () => {
     }));
   };
 
+  const handleDateChange = (date) => {
+    setFormData((prev) => ({
+      ...prev,
+      dueDate: date,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const taskData = {
         ...formData,
-        // Only set assignedTo if a user is selected
         assignedTo: formData.assignedTo || null,
       };
       await dispatch(createTask(taskData)).unwrap();
@@ -74,7 +114,7 @@ const Tasks = () => {
       setFormData({
         title: "",
         description: "",
-        dueDate: "",
+        dueDate: null,
         priority: "medium",
         status: "todo",
         projectId: "",
@@ -82,6 +122,37 @@ const Tasks = () => {
       });
     } catch (error) {
       console.error("Failed to create task:", error);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const taskData = {
+        ...formData,
+        assignedTo: formData.assignedTo || null,
+      };
+      await dispatch(updateTask({ taskId: currentTask.id, taskData })).unwrap();
+      handleEditClose();
+    } catch (error) {
+      console.error("Failed to update task:", error);
+    }
+  };
+
+  const handleDelete = async (taskId) => {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      try {
+        await dispatch(deleteTask(taskId)).unwrap();
+      } catch (error) {
+        console.error("Failed to delete task:", error);
+      }
+    }
+  };
+
+  const handleEdit = (taskId) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) {
+      handleEditOpen(task);
     }
   };
 
@@ -94,6 +165,45 @@ const Tasks = () => {
     const matchesProject = !projectFilter || task.projectId === projectFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesProject;
   });
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "todo":
+        return "default";
+      case "in_progress":
+        return "warning";
+      case "completed":
+        return "success";
+      default:
+        return "default";
+    }
+  };
+
+  const formatStatus = (status) => {
+    switch (status) {
+      case "todo":
+        return "To Do";
+      case "in_progress":
+        return "In Progress";
+      case "completed":
+        return "Completed";
+      default:
+        return status;
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "low":
+        return "info";
+      case "medium":
+        return "warning";
+      case "high":
+        return "error";
+      default:
+        return "default";
+    }
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -183,23 +293,85 @@ const Tasks = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        {loading ? (
-          <Grid item xs={12}>
-            <Typography>Loading tasks...</Typography>
-          </Grid>
-        ) : filteredTasks.length === 0 ? (
-          <Grid item xs={12}>
-            <Typography>No tasks found.</Typography>
-          </Grid>
-        ) : (
-          filteredTasks.map((task) => (
-            <Grid item xs={12} md={6} key={task.id}>
-              <TaskCard task={task} />
-            </Grid>
-          ))
-        )}
-      </Grid>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Title</TableCell>
+              <TableCell>Description</TableCell>
+              <TableCell>Project</TableCell>
+              <TableCell>Assigned To</TableCell>
+              <TableCell>Due Date</TableCell>
+              <TableCell>Priority</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  Loading tasks...
+                </TableCell>
+              </TableRow>
+            ) : filteredTasks.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  No tasks found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredTasks.map((task) => (
+                <TableRow key={task.id}>
+                  <TableCell>{task.title}</TableCell>
+                  <TableCell>{task.description}</TableCell>
+                  <TableCell>
+                    {projects.find((p) => p.id === task.projectId)?.title ||
+                      "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    {users.find((u) => u.id === task.assignedTo)?.name ||
+                      "Unassigned"}
+                  </TableCell>
+                  <TableCell>
+                    {task.dueDate
+                      ? new Date(task.dueDate).toLocaleDateString()
+                      : "Not set"}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={task.priority}
+                      color={getPriorityColor(task.priority)}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={formatStatus(task.status)}
+                      color={getStatusColor(task.status)}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(task.id)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(task.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Task</DialogTitle>
@@ -224,16 +396,16 @@ const Tasks = () => {
               rows={4}
               sx={{ mb: 2 }}
             />
-            <TextField
-              fullWidth
-              label="Due Date"
-              name="dueDate"
-              type="date"
-              value={formData.dueDate}
-              onChange={handleInputChange}
-              InputLabelProps={{ shrink: true }}
-              sx={{ mb: 2 }}
-            />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Due Date"
+                value={formData.dueDate}
+                onChange={handleDateChange}
+                renderInput={(params) => (
+                  <TextField {...params} fullWidth sx={{ mb: 2 }} />
+                )}
+              />
+            </LocalizationProvider>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Project</InputLabel>
               <Select
@@ -251,6 +423,22 @@ const Tasks = () => {
               </Select>
             </FormControl>
             <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Assigned To</InputLabel>
+              <Select
+                name="assignedTo"
+                value={formData.assignedTo}
+                label="Assigned To"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="">Unassigned</MenuItem>
+                {users.map((user) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    {user.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Priority</InputLabel>
               <Select
                 name="priority"
@@ -263,7 +451,7 @@ const Tasks = () => {
                 <MenuItem value="high">High</MenuItem>
               </Select>
             </FormControl>
-            <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select
                 name="status"
@@ -276,7 +464,67 @@ const Tasks = () => {
                 <MenuItem value="completed">Completed</MenuItem>
               </Select>
             </FormControl>
-            <FormControl fullWidth>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button type="submit" variant="contained">
+              Create
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={editOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Task</DialogTitle>
+        <form onSubmit={handleEditSubmit}>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Title"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              required
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              multiline
+              rows={4}
+              sx={{ mb: 2 }}
+            />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Due Date"
+                value={formData.dueDate}
+                onChange={handleDateChange}
+                renderInput={(params) => (
+                  <TextField {...params} fullWidth sx={{ mb: 2 }} />
+                )}
+              />
+            </LocalizationProvider>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Project</InputLabel>
+              <Select
+                name="projectId"
+                value={formData.projectId}
+                label="Project"
+                onChange={handleInputChange}
+                required
+              >
+                {projects.map((project) => (
+                  <MenuItem key={project.id} value={project.id}>
+                    {project.title}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Assigned To</InputLabel>
               <Select
                 name="assignedTo"
@@ -285,19 +533,44 @@ const Tasks = () => {
                 onChange={handleInputChange}
               >
                 <MenuItem value="">Unassigned</MenuItem>
-                <MenuItem value={currentUser?.id}>Assign to myself</MenuItem>
                 {users.map((user) => (
                   <MenuItem key={user.id} value={user.id}>
-                    {user.name} ({user.email})
+                    {user.name}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Priority</InputLabel>
+              <Select
+                name="priority"
+                value={formData.priority}
+                label="Priority"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="low">Low</MenuItem>
+                <MenuItem value="medium">Medium</MenuItem>
+                <MenuItem value="high">High</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                name="status"
+                value={formData.status}
+                label="Status"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="todo">To Do</MenuItem>
+                <MenuItem value="in_progress">In Progress</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </Select>
+            </FormControl>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
+            <Button onClick={handleEditClose}>Cancel</Button>
             <Button type="submit" variant="contained">
-              Create
+              Update
             </Button>
           </DialogActions>
         </form>

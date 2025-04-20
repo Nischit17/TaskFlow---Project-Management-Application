@@ -15,22 +15,43 @@ import {
   Select,
   MenuItem,
   Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Chip,
 } from "@mui/material";
-import { Add as AddIcon } from "@mui/icons-material";
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+} from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProjects, createProject } from "../store/slices/projectSlice";
-import ProjectCard from "../components/ProjectCard";
+import {
+  fetchProjects,
+  createProject,
+  deleteProject,
+  updateProject,
+} from "../store/slices/projectSlice";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 
 const Projects = () => {
   const dispatch = useDispatch();
   const { projects, loading, error } = useSelector((state) => state.projects);
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [currentProject, setCurrentProject] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    dueDate: "",
+    dueDate: null,
     status: "active",
   });
 
@@ -40,12 +61,30 @@ const Projects = () => {
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+  const handleEditOpen = (project) => {
+    setCurrentProject(project);
+    setFormData({
+      title: project.title,
+      description: project.description || "",
+      dueDate: project.dueDate ? new Date(project.dueDate) : null,
+      status: project.status,
+    });
+    setEditOpen(true);
+  };
+  const handleEditClose = () => setEditOpen(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handleDateChange = (date) => {
+    setFormData((prev) => ({
+      ...prev,
+      dueDate: date,
     }));
   };
 
@@ -57,11 +96,40 @@ const Projects = () => {
       setFormData({
         title: "",
         description: "",
-        dueDate: "",
+        dueDate: null,
         status: "active",
       });
     } catch (error) {
       console.error("Failed to create project:", error);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await dispatch(
+        updateProject({ projectId: currentProject.id, projectData: formData })
+      ).unwrap();
+      handleEditClose();
+    } catch (error) {
+      console.error("Failed to update project:", error);
+    }
+  };
+
+  const handleDelete = async (projectId) => {
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      try {
+        await dispatch(deleteProject(projectId)).unwrap();
+      } catch (error) {
+        console.error("Failed to delete project:", error);
+      }
+    }
+  };
+
+  const handleEdit = (projectId) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (project) {
+      handleEditOpen(project);
     }
   };
 
@@ -72,6 +140,19 @@ const Projects = () => {
     const matchesStatus = !statusFilter || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active":
+        return "success";
+      case "completed":
+        return "info";
+      case "on_hold":
+        return "warning";
+      default:
+        return "default";
+    }
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -129,23 +210,67 @@ const Projects = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        {loading ? (
-          <Grid item xs={12}>
-            <Typography>Loading projects...</Typography>
-          </Grid>
-        ) : filteredProjects.length === 0 ? (
-          <Grid item xs={12}>
-            <Typography>No projects found.</Typography>
-          </Grid>
-        ) : (
-          filteredProjects.map((project) => (
-            <Grid item xs={12} md={6} key={project.id}>
-              <ProjectCard project={project} />
-            </Grid>
-          ))
-        )}
-      </Grid>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Title</TableCell>
+              <TableCell>Description</TableCell>
+              <TableCell>Due Date</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  Loading projects...
+                </TableCell>
+              </TableRow>
+            ) : filteredProjects.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  No projects found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredProjects.map((project) => (
+                <TableRow key={project.id}>
+                  <TableCell>{project.title}</TableCell>
+                  <TableCell>{project.description}</TableCell>
+                  <TableCell>
+                    {project.dueDate
+                      ? new Date(project.dueDate).toLocaleDateString()
+                      : "Not set"}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={project.status}
+                      color={getStatusColor(project.status)}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(project.id)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(project.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Project</DialogTitle>
@@ -170,16 +295,16 @@ const Projects = () => {
               rows={4}
               sx={{ mb: 2 }}
             />
-            <TextField
-              fullWidth
-              label="Due Date"
-              name="dueDate"
-              type="date"
-              value={formData.dueDate}
-              onChange={handleInputChange}
-              InputLabelProps={{ shrink: true }}
-              sx={{ mb: 2 }}
-            />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Due Date"
+                value={formData.dueDate}
+                onChange={handleDateChange}
+                renderInput={(params) => (
+                  <TextField {...params} fullWidth sx={{ mb: 2 }} />
+                )}
+              />
+            </LocalizationProvider>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select
@@ -198,6 +323,63 @@ const Projects = () => {
             <Button onClick={handleClose}>Cancel</Button>
             <Button type="submit" variant="contained">
               Create
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Edit Project Dialog */}
+      <Dialog open={editOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Project</DialogTitle>
+        <form onSubmit={handleEditSubmit}>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Title"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              required
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              multiline
+              rows={4}
+              sx={{ mb: 2 }}
+            />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Due Date"
+                value={formData.dueDate}
+                onChange={handleDateChange}
+                renderInput={(params) => (
+                  <TextField {...params} fullWidth sx={{ mb: 2 }} />
+                )}
+              />
+            </LocalizationProvider>
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                name="status"
+                value={formData.status}
+                label="Status"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="on_hold">On Hold</MenuItem>
+              </Select>
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleEditClose}>Cancel</Button>
+            <Button type="submit" variant="contained">
+              Update
             </Button>
           </DialogActions>
         </form>
