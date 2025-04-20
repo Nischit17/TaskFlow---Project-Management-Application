@@ -9,6 +9,7 @@ import {
   Box,
   Typography,
   Alert,
+  FormHelperText,
 } from "@mui/material";
 import { PersonAdd as PersonAddIcon } from "@mui/icons-material";
 import useAuth from "../../hooks/useAuth";
@@ -22,6 +23,69 @@ const Register = () => {
     password: "",
     confirmPassword: "",
   });
+  const [formErrors, setFormErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const validatePassword = (password) => {
+    // At least 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character
+    const re =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    return re.test(password);
+  };
+
+  const validateForm = () => {
+    let isValid = true;
+    const errors = {};
+
+    // Name validation
+    if (!formData.name.trim()) {
+      errors.name = "Name is required";
+      isValid = false;
+    } else if (formData.name.length < 2) {
+      errors.name = "Name must be at least 2 characters long";
+      isValid = false;
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!validateEmail(formData.email)) {
+      errors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    // Password validation
+    if (!formData.password) {
+      errors.password = "Password is required";
+      isValid = false;
+    } else if (!validatePassword(formData.password)) {
+      errors.password =
+        "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character";
+      isValid = false;
+    }
+
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      errors.confirmPassword = "Please confirm your password";
+      isValid = false;
+    } else if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,18 +93,23 @@ const Register = () => {
       ...prev,
       [name]: value,
     }));
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      // You might want to handle this error differently
-      alert("Passwords do not match");
+    if (!validateForm()) {
       return;
     }
 
     try {
-      const { ...registerData } = formData;
+      const { confirmPassword, ...registerData } = formData;
       await register(registerData);
       navigate("/dashboard");
     } catch {
@@ -88,6 +157,8 @@ const Register = () => {
           autoFocus
           value={formData.name}
           onChange={handleChange}
+          error={!!formErrors.name}
+          helperText={formErrors.name}
         />
         <TextField
           margin="normal"
@@ -99,6 +170,8 @@ const Register = () => {
           autoComplete="email"
           value={formData.email}
           onChange={handleChange}
+          error={!!formErrors.email}
+          helperText={formErrors.email}
         />
         <TextField
           margin="normal"
@@ -111,6 +184,8 @@ const Register = () => {
           autoComplete="new-password"
           value={formData.password}
           onChange={handleChange}
+          error={!!formErrors.password}
+          helperText={formErrors.password}
         />
         <TextField
           margin="normal"
@@ -123,6 +198,8 @@ const Register = () => {
           autoComplete="new-password"
           value={formData.confirmPassword}
           onChange={handleChange}
+          error={!!formErrors.confirmPassword}
+          helperText={formErrors.confirmPassword}
         />
         <Button
           type="submit"
@@ -135,7 +212,7 @@ const Register = () => {
         <Grid container justifyContent="flex-end">
           <Grid>
             <Link component={RouterLink} to="/auth/login" variant="body2">
-              Already have an account? Sign in
+              {"Already have an account? Sign In"}
             </Link>
           </Grid>
         </Grid>

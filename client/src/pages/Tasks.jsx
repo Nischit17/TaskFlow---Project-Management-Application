@@ -24,6 +24,7 @@ import {
   Paper,
   IconButton,
   Chip,
+  FormHelperText,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -44,6 +45,7 @@ import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 
 const Tasks = () => {
   const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.auth.user);
   const { tasks, loading, error } = useSelector((state) => state.tasks);
   const { projects } = useSelector((state) => state.projects);
   const { users } = useSelector((state) => state.users);
@@ -62,6 +64,17 @@ const Tasks = () => {
     status: "todo",
     projectId: "",
     assignedTo: "",
+    createdBy: "",
+  });
+  const [formErrors, setFormErrors] = useState({
+    title: "",
+    description: "",
+    dueDate: "",
+    priority: "",
+    status: "",
+    projectId: "",
+    assignedTo: "",
+    submit: "",
   });
 
   useEffect(() => {
@@ -82,6 +95,7 @@ const Tasks = () => {
       status: task.status,
       projectId: task.projectId,
       assignedTo: task.assignedTo || "",
+      createdBy: task.createdBy || "",
     });
     setEditOpen(true);
   };
@@ -102,13 +116,93 @@ const Tasks = () => {
     }));
   };
 
+  const validateForm = () => {
+    let isValid = true;
+    const errors = {};
+
+    // Title validation
+    if (!formData.title.trim()) {
+      errors.title = "Title is required";
+      isValid = false;
+    } else if (formData.title.length < 3) {
+      errors.title = "Title must be at least 3 characters long";
+      isValid = false;
+    }
+
+    // Description validation
+    if (formData.description && formData.description.length > 500) {
+      errors.description = "Description must be less than 500 characters";
+      isValid = false;
+    }
+
+    // Due date validation
+    if (formData.dueDate) {
+      const dueDate = new Date(formData.dueDate);
+      if (isNaN(dueDate.getTime())) {
+        errors.dueDate = "Invalid due date";
+        isValid = false;
+      }
+    }
+
+    // Project validation
+    if (!formData.projectId) {
+      errors.projectId = "Project is required";
+      isValid = false;
+    }
+
+    // Priority validation
+    if (!formData.priority) {
+      errors.priority = "Priority is required";
+      isValid = false;
+    } else if (!["low", "medium", "high"].includes(formData.priority)) {
+      errors.priority = "Priority must be low, medium, or high";
+      isValid = false;
+    }
+
+    // Status validation
+    if (!formData.status) {
+      errors.status = "Status is required";
+      isValid = false;
+    } else if (
+      !["todo", "in_progress", "completed"].includes(formData.status)
+    ) {
+      errors.status = "Status must be todo, in_progress, or completed";
+      isValid = false;
+    }
+
+    // Assigned To validation (only if a value is provided)
+    if (formData.assignedTo && formData.assignedTo !== "") {
+      if (!users.find((user) => user.id === formData.assignedTo)) {
+        errors.assignedTo = "Selected user does not exist";
+        isValid = false;
+      }
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     try {
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      // Create a copy of formData to modify
       const taskData = {
         ...formData,
-        assignedTo: formData.assignedTo || null,
+        createdBy: currentUser.id,
       };
+
+      // Handle unassigned case - set to null if empty string
+      if (taskData.assignedTo === "") {
+        taskData.assignedTo = null;
+      }
+
       await dispatch(createTask(taskData)).unwrap();
       handleClose();
       setFormData({
@@ -119,23 +213,43 @@ const Tasks = () => {
         status: "todo",
         projectId: "",
         assignedTo: "",
+        createdBy: "",
       });
+      setFormErrors({});
     } catch (error) {
       console.error("Failed to create task:", error);
+      setFormErrors((prev) => ({
+        ...prev,
+        submit: error.message || "Failed to create task",
+      }));
     }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     try {
-      const taskData = {
-        ...formData,
-        assignedTo: formData.assignedTo || null,
-      };
-      await dispatch(updateTask({ taskId: currentTask.id, taskData })).unwrap();
+      // Create a copy of formData to modify
+      const taskData = { ...formData };
+
+      // Handle unassigned case - set to null if empty string
+      if (taskData.assignedTo === "") {
+        taskData.assignedTo = null;
+      }
+
+      await dispatch(
+        updateTask({ taskId: currentTask.id, taskData: taskData })
+      ).unwrap();
       handleEditClose();
+      setFormErrors({});
     } catch (error) {
       console.error("Failed to update task:", error);
+      setFormErrors((prev) => ({
+        ...prev,
+        submit: error.message || "Failed to update task",
+      }));
     }
   };
 
@@ -156,15 +270,25 @@ const Tasks = () => {
     }
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      task.title.toLowerCase().includes(search.toLowerCase()) ||
-      task.description.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = !statusFilter || task.status === statusFilter;
-    const matchesPriority = !priorityFilter || task.priority === priorityFilter;
-    const matchesProject = !projectFilter || task.projectId === projectFilter;
-    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
-  });
+  const filteredTasks = tasks
+    .filter((task) => {
+      const matchesSearch =
+        task.title.toLowerCase().includes(search.toLowerCase()) ||
+        task.description.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = !statusFilter || task.status === statusFilter;
+      const matchesPriority =
+        !priorityFilter || task.priority === priorityFilter;
+      const matchesProject = !projectFilter || task.projectId === projectFilter;
+      return (
+        matchesSearch && matchesStatus && matchesPriority && matchesProject
+      );
+    })
+    .sort((a, b) => {
+      // Sort by creation date (newest first)
+      const dateA = new Date(a.createdAt || a.created_at || 0);
+      const dateB = new Date(b.createdAt || b.created_at || 0);
+      return dateA - dateB; // Ascending order (oldest first)
+    });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -377,6 +501,11 @@ const Tasks = () => {
         <DialogTitle>Create New Task</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
+            {formErrors.submit && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {formErrors.submit}
+              </Alert>
+            )}
             <TextField
               fullWidth
               label="Title"
@@ -384,6 +513,8 @@ const Tasks = () => {
               value={formData.title}
               onChange={handleInputChange}
               required
+              error={!!formErrors.title}
+              helperText={formErrors.title}
               sx={{ mb: 2 }}
             />
             <TextField
@@ -394,6 +525,8 @@ const Tasks = () => {
               onChange={handleInputChange}
               multiline
               rows={4}
+              error={!!formErrors.description}
+              helperText={formErrors.description}
               sx={{ mb: 2 }}
             />
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -402,11 +535,21 @@ const Tasks = () => {
                 value={formData.dueDate}
                 onChange={handleDateChange}
                 renderInput={(params) => (
-                  <TextField {...params} fullWidth sx={{ mb: 2 }} />
+                  <TextField
+                    {...params}
+                    fullWidth
+                    error={!!formErrors.dueDate}
+                    helperText={formErrors.dueDate}
+                    sx={{ mb: 2 }}
+                  />
                 )}
               />
             </LocalizationProvider>
-            <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl
+              fullWidth
+              error={!!formErrors.projectId}
+              sx={{ mb: 2 }}
+            >
               <InputLabel>Project</InputLabel>
               <Select
                 name="projectId"
@@ -421,6 +564,9 @@ const Tasks = () => {
                   </MenuItem>
                 ))}
               </Select>
+              {formErrors.projectId && (
+                <FormHelperText>{formErrors.projectId}</FormHelperText>
+              )}
             </FormControl>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Assigned To</InputLabel>
@@ -445,11 +591,15 @@ const Tasks = () => {
                 value={formData.priority}
                 label="Priority"
                 onChange={handleInputChange}
+                error={!!formErrors.priority}
               >
                 <MenuItem value="low">Low</MenuItem>
                 <MenuItem value="medium">Medium</MenuItem>
                 <MenuItem value="high">High</MenuItem>
               </Select>
+              {formErrors.priority && (
+                <FormHelperText error>{formErrors.priority}</FormHelperText>
+              )}
             </FormControl>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
@@ -458,11 +608,15 @@ const Tasks = () => {
                 value={formData.status}
                 label="Status"
                 onChange={handleInputChange}
+                error={!!formErrors.status}
               >
                 <MenuItem value="todo">To Do</MenuItem>
                 <MenuItem value="in_progress">In Progress</MenuItem>
                 <MenuItem value="completed">Completed</MenuItem>
               </Select>
+              {formErrors.status && (
+                <FormHelperText error>{formErrors.status}</FormHelperText>
+              )}
             </FormControl>
           </DialogContent>
           <DialogActions>
@@ -479,6 +633,11 @@ const Tasks = () => {
         <DialogTitle>Edit Task</DialogTitle>
         <form onSubmit={handleEditSubmit}>
           <DialogContent>
+            {formErrors.submit && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {formErrors.submit}
+              </Alert>
+            )}
             <TextField
               fullWidth
               label="Title"
@@ -486,6 +645,8 @@ const Tasks = () => {
               value={formData.title}
               onChange={handleInputChange}
               required
+              error={!!formErrors.title}
+              helperText={formErrors.title}
               sx={{ mb: 2 }}
             />
             <TextField
@@ -496,6 +657,8 @@ const Tasks = () => {
               onChange={handleInputChange}
               multiline
               rows={4}
+              error={!!formErrors.description}
+              helperText={formErrors.description}
               sx={{ mb: 2 }}
             />
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -504,11 +667,21 @@ const Tasks = () => {
                 value={formData.dueDate}
                 onChange={handleDateChange}
                 renderInput={(params) => (
-                  <TextField {...params} fullWidth sx={{ mb: 2 }} />
+                  <TextField
+                    {...params}
+                    fullWidth
+                    error={!!formErrors.dueDate}
+                    helperText={formErrors.dueDate}
+                    sx={{ mb: 2 }}
+                  />
                 )}
               />
             </LocalizationProvider>
-            <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl
+              fullWidth
+              error={!!formErrors.projectId}
+              sx={{ mb: 2 }}
+            >
               <InputLabel>Project</InputLabel>
               <Select
                 name="projectId"
@@ -523,6 +696,9 @@ const Tasks = () => {
                   </MenuItem>
                 ))}
               </Select>
+              {formErrors.projectId && (
+                <FormHelperText>{formErrors.projectId}</FormHelperText>
+              )}
             </FormControl>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Assigned To</InputLabel>
@@ -547,11 +723,15 @@ const Tasks = () => {
                 value={formData.priority}
                 label="Priority"
                 onChange={handleInputChange}
+                error={!!formErrors.priority}
               >
                 <MenuItem value="low">Low</MenuItem>
                 <MenuItem value="medium">Medium</MenuItem>
                 <MenuItem value="high">High</MenuItem>
               </Select>
+              {formErrors.priority && (
+                <FormHelperText error>{formErrors.priority}</FormHelperText>
+              )}
             </FormControl>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
@@ -560,11 +740,15 @@ const Tasks = () => {
                 value={formData.status}
                 label="Status"
                 onChange={handleInputChange}
+                error={!!formErrors.status}
               >
                 <MenuItem value="todo">To Do</MenuItem>
                 <MenuItem value="in_progress">In Progress</MenuItem>
                 <MenuItem value="completed">Completed</MenuItem>
               </Select>
+              {formErrors.status && (
+                <FormHelperText error>{formErrors.status}</FormHelperText>
+              )}
             </FormControl>
           </DialogContent>
           <DialogActions>

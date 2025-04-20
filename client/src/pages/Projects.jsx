@@ -24,6 +24,7 @@ import {
   Paper,
   IconButton,
   Chip,
+  FormHelperText,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -42,6 +43,7 @@ import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 
 const Projects = () => {
   const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.auth.user);
   const { projects, loading, error } = useSelector((state) => state.projects);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -53,6 +55,14 @@ const Projects = () => {
     description: "",
     dueDate: null,
     status: "active",
+    createdBy: "",
+  });
+  const [formErrors, setFormErrors] = useState({
+    title: "",
+    description: "",
+    dueDate: "",
+    status: "",
+    submit: "",
   });
 
   useEffect(() => {
@@ -68,6 +78,7 @@ const Projects = () => {
       description: project.description || "",
       dueDate: project.dueDate ? new Date(project.dueDate) : null,
       status: project.status,
+      createdBy: project.createdBy,
     });
     setEditOpen(true);
   };
@@ -88,29 +99,92 @@ const Projects = () => {
     }));
   };
 
+  const validateForm = () => {
+    let isValid = true;
+    const errors = {};
+
+    // Title validation
+    if (!formData.title.trim()) {
+      errors.title = "Title is required";
+      isValid = false;
+    } else if (formData.title.length < 3) {
+      errors.title = "Title must be at least 3 characters long";
+      isValid = false;
+    }
+
+    // Description validation
+    if (formData.description && formData.description.length > 1000) {
+      errors.description = "Description must be less than 1000 characters";
+      isValid = false;
+    }
+
+    // Due date validation
+    if (formData.dueDate) {
+      const dueDate = new Date(formData.dueDate);
+      if (isNaN(dueDate.getTime())) {
+        errors.dueDate = "Invalid due date";
+        isValid = false;
+      }
+    }
+
+    // Status validation
+    if (!formData.status) {
+      errors.status = "Status is required";
+      isValid = false;
+    } else if (!["active", "completed", "on_hold"].includes(formData.status)) {
+      errors.status = "Invalid status";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     try {
-      await dispatch(createProject(formData)).unwrap();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const projectData = {
+        ...formData,
+        createdBy: currentUser.id,
+      };
+
+      await dispatch(createProject(projectData)).unwrap();
       handleClose();
       setFormData({
         title: "",
         description: "",
         dueDate: null,
         status: "active",
+        createdBy: "",
       });
+      setFormErrors({});
     } catch (error) {
       console.error("Failed to create project:", error);
+      setFormErrors((prev) => ({
+        ...prev,
+        submit: error.message || "Failed to create project",
+      }));
     }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     try {
       await dispatch(
         updateProject({ projectId: currentProject.id, projectData: formData })
       ).unwrap();
       handleEditClose();
+      setFormErrors({});
     } catch (error) {
       console.error("Failed to update project:", error);
     }
@@ -133,13 +207,20 @@ const Projects = () => {
     }
   };
 
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch =
-      project.title.toLowerCase().includes(search.toLowerCase()) ||
-      project.description.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = !statusFilter || project.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredProjects = projects
+    .filter((project) => {
+      const matchesSearch =
+        project.title.toLowerCase().includes(search.toLowerCase()) ||
+        project.description.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = !statusFilter || project.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      // Sort by creation date (newest first)
+      const dateA = new Date(a.createdAt || a.created_at || 0);
+      const dateB = new Date(b.createdAt || b.created_at || 0);
+      return dateA - dateB; // Ascending order (oldest first)
+    });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -276,6 +357,11 @@ const Projects = () => {
         <DialogTitle>Create New Project</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
+            {formErrors.submit && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {formErrors.submit}
+              </Alert>
+            )}
             <TextField
               fullWidth
               label="Title"
@@ -283,6 +369,8 @@ const Projects = () => {
               value={formData.title}
               onChange={handleInputChange}
               required
+              error={!!formErrors.title}
+              helperText={formErrors.title}
               sx={{ mb: 2 }}
             />
             <TextField
@@ -293,6 +381,8 @@ const Projects = () => {
               onChange={handleInputChange}
               multiline
               rows={4}
+              error={!!formErrors.description}
+              helperText={formErrors.description}
               sx={{ mb: 2 }}
             />
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -312,11 +402,15 @@ const Projects = () => {
                 value={formData.status}
                 label="Status"
                 onChange={handleInputChange}
+                error={!!formErrors.status}
               >
                 <MenuItem value="active">Active</MenuItem>
                 <MenuItem value="completed">Completed</MenuItem>
                 <MenuItem value="on_hold">On Hold</MenuItem>
               </Select>
+              {formErrors.status && (
+                <FormHelperText error>{formErrors.status}</FormHelperText>
+              )}
             </FormControl>
           </DialogContent>
           <DialogActions>
@@ -340,6 +434,8 @@ const Projects = () => {
               value={formData.title}
               onChange={handleInputChange}
               required
+              error={!!formErrors.title}
+              helperText={formErrors.title}
               sx={{ mb: 2 }}
             />
             <TextField
@@ -350,6 +446,8 @@ const Projects = () => {
               onChange={handleInputChange}
               multiline
               rows={4}
+              error={!!formErrors.description}
+              helperText={formErrors.description}
               sx={{ mb: 2 }}
             />
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -369,11 +467,15 @@ const Projects = () => {
                 value={formData.status}
                 label="Status"
                 onChange={handleInputChange}
+                error={!!formErrors.status}
               >
                 <MenuItem value="active">Active</MenuItem>
                 <MenuItem value="completed">Completed</MenuItem>
                 <MenuItem value="on_hold">On Hold</MenuItem>
               </Select>
+              {formErrors.status && (
+                <FormHelperText error>{formErrors.status}</FormHelperText>
+              )}
             </FormControl>
           </DialogContent>
           <DialogActions>

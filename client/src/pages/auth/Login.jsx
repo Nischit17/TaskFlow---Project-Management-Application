@@ -9,6 +9,7 @@ import {
   Box,
   Typography,
   Alert,
+  FormHelperText,
 } from "@mui/material";
 import { LockOutlined as LockIcon } from "@mui/icons-material";
 import useAuth from "../../hooks/useAuth";
@@ -21,6 +22,38 @@ const Login = () => {
     email: "",
     password: "",
   });
+  const [formErrors, setFormErrors] = useState({
+    email: "",
+    password: "",
+  });
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const validateForm = () => {
+    let isValid = true;
+    const errors = {};
+
+    // Email validation
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!validateEmail(formData.email)) {
+      errors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    // Password validation
+    if (!formData.password) {
+      errors.password = "Password is required";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,10 +61,21 @@ const Login = () => {
       ...prev,
       [name]: value,
     }));
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       await login(formData.email, formData.password);
       const from = location.state?.from?.pathname || "/dashboard";
@@ -82,6 +126,8 @@ const Login = () => {
           autoFocus
           value={formData.email}
           onChange={handleChange}
+          error={!!formErrors.email}
+          helperText={formErrors.email}
         />
         <TextField
           margin="normal"
@@ -94,6 +140,8 @@ const Login = () => {
           autoComplete="current-password"
           value={formData.password}
           onChange={handleChange}
+          error={!!formErrors.password}
+          helperText={formErrors.password}
         />
         <Button
           type="submit"
