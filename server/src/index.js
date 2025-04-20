@@ -18,11 +18,19 @@ app.use((req, res, next) => {
 // CORS configuration
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"], // Allow requests from your frontend
-    credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], // Allow these HTTP methods
-    allowedHeaders: ["Content-Type", "Authorization", "Accept"], // Allow these headers
-    exposedHeaders: ["Content-Range", "X-Content-Range"], // Expose these headers
+    origin: true, // Allow all origins during development
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "Origin",
+      "X-Requested-With",
+    ],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
 

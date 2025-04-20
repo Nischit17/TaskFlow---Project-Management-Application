@@ -234,7 +234,7 @@ const Dashboard = () => {
 
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <StatCard
             title="Total Tasks"
             value={stats.totalTasks}
@@ -243,7 +243,7 @@ const Dashboard = () => {
             trendText="from last week"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <StatCard
             title="Completed"
             value={stats.completedTasks}
@@ -252,7 +252,7 @@ const Dashboard = () => {
             trendText="from last week"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <StatCard
             title="In Progress"
             value={stats.inProgressTasks}
@@ -261,7 +261,7 @@ const Dashboard = () => {
             trendText="from last week"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <StatCard
             title="Overdue"
             value={stats.overdueTasks}
@@ -274,23 +274,33 @@ const Dashboard = () => {
 
       {/* Charts */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} lg={6}>
           <Card
             elevation={0}
             sx={{
               height: "100%",
+              minHeight: 400,
               border: "1px solid",
               borderColor: "divider",
               borderRadius: 2,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <CardContent sx={{ p: { xs: 2, md: 3 }, height: "100%" }}>
+            <CardContent
+              sx={{
+                p: { xs: 2, md: 3 },
+                flexGrow: 1,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <Typography variant="h6" gutterBottom>
                 Task Distribution
               </Typography>
               <Box
                 sx={{
-                  height: { xs: 250, sm: 300 },
+                  flexGrow: 1,
                   width: "100%",
                   mt: 2,
                   display: "flex",
@@ -298,7 +308,7 @@ const Dashboard = () => {
                   justifyContent: "center",
                 }}
               >
-                <ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={stats.taskDistribution}
@@ -330,28 +340,38 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} lg={6}>
           <Card
             elevation={0}
             sx={{
               height: "100%",
+              minHeight: 400,
               border: "1px solid",
               borderColor: "divider",
               borderRadius: 2,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <CardContent sx={{ p: { xs: 2, md: 3 }, height: "100%" }}>
+            <CardContent
+              sx={{
+                p: { xs: 2, md: 3 },
+                flexGrow: 1,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <Typography variant="h6" gutterBottom>
                 Project Status
               </Typography>
               <Box
                 sx={{
-                  height: { xs: 250, sm: 300 },
+                  flexGrow: 1,
                   width: "100%",
                   mt: 2,
                 }}
               >
-                <ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={stats.projectDistribution}
                     margin={{
@@ -391,22 +411,25 @@ const Dashboard = () => {
 
       {/* Recent Items */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} lg={6}>
           <Card
             elevation={0}
             sx={{
               height: "100%",
+              minHeight: 300,
               border: "1px solid",
               borderColor: "divider",
               borderRadius: 2,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+            <CardContent sx={{ p: { xs: 2, md: 3 }, flexGrow: 1 }}>
               <Typography variant="h6" gutterBottom>
                 Recent Tasks
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              <List disablePadding>
+              <List disablePadding sx={{ height: "100%" }}>
                 {stats.recentTasks.length > 0 ? (
                   stats.recentTasks.map((task, index) => (
                     <ListItem
@@ -443,22 +466,25 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} lg={6}>
           <Card
             elevation={0}
             sx={{
               height: "100%",
+              minHeight: 300,
               border: "1px solid",
               borderColor: "divider",
               borderRadius: 2,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+            <CardContent sx={{ p: { xs: 2, md: 3 }, flexGrow: 1 }}>
               <Typography variant="h6" gutterBottom>
                 Recent Projects
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              <List disablePadding>
+              <List disablePadding sx={{ height: "100%" }}>
                 {stats.recentProjects.length > 0 ? (
                   stats.recentProjects.map((project, index) => (
                     <ListItem
